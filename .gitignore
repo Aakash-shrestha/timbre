@@ -8,7 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+.env
 
 architecture.md
 glossary.md
 learning-log.md
+
+previews/
