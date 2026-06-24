@@ -32,20 +32,14 @@ def download_preview(url: str, path: str):
         f.write(resp.content)
 
 
-def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
-    """
-    Given a YouTube playlist ID, this function retrieves the titles of the videos in the playlist,
-    searches for their previews on the iTunes API, downloads the previews, and returns a list of the resolved
-    titles and their corresponding audio embeddings.
-    """
-    titles = get_titles(playlist_id)
+def embed_titles(titles: list[str], outdir: str) -> tuple[list[str], np.ndarray]:
     model = laion_clap.CLAP_Module(enable_fusion=False)
     model.load_ckpt()
 
     resolved_titles = []
     path = []
 
-    Path("previews").mkdir(exist_ok=True)
+    Path(outdir).mkdir(exist_ok=True)
     for title in titles:
         url = search_itunes(title)
 
@@ -53,7 +47,7 @@ def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
             print(f"No preview found, skipping: {title}")
             continue
 
-        current_path = f"previews/{len(path)}.m4a"
+        current_path = f"{outdir}/{len(path)}.m4a"
         if not Path(current_path).exists():
             download_preview(url, current_path)
         resolved_titles.append(title)
@@ -62,6 +56,16 @@ def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
     embedding = model.get_audio_embedding_from_filelist(x=path, use_tensor=False)
 
     return resolved_titles, embedding
+
+
+def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
+    """
+    Given a YouTube playlist ID, this function retrieves the titles of the videos in the playlist,
+    searches for their previews on the iTunes API, downloads the previews, and returns a list of the resolved
+    titles and their corresponding audio embeddings.
+    """
+    titles = get_titles(playlist_id)
+    return embed_titles(titles, "previews")
 
 
 resolved_titles, embeddings = embed_playlist(PLAYLIST_ID)
