@@ -20,11 +20,8 @@ def read_csv_titles(csv_path: str) -> list[str]:
 playlist_titles = read_csv_titles("data/spotify_liked_songs.csv")
 titles, embeddings = embed_titles(playlist_titles, "data/liked_playlist")
 
-for k in range(2, 7):
-    kmeans = KMeans(n_clusters=k, random_state=42)
-    labels = kmeans.fit_predict(embeddings)
-    score = silhouette_score(embeddings, labels, metric="cosine")
-    print(f"k={k}: silhouette={score:.4f}")
+kmeans = KMeans(n_clusters=3, random_state=42)
+labels = kmeans.fit_predict(embeddings)
 
 print("\n--- Cluster contents ---")
 for cluster_id in sorted(set(labels)):
