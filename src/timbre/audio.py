@@ -5,8 +5,6 @@ import laion_clap
 import numpy as np
 import requests
 
-from timbre.youtube import get_titles
-
 PLAYLIST_ID = "PLbAAt7n1yO_tydN0yogQXwvjH-KpkoZha"
 
 CACHE_PATH = "embedding_cache.pkl"
@@ -32,6 +30,8 @@ def search_itunes(term: str) -> str | None:
         "https://itunes.apple.com/search",
         params={"term": term, "entity": "song", "limit": 1},
     )
+    if not response.text.strip():
+        return None
     results = response.json()["results"]
     if not results:
         return None
@@ -47,9 +47,26 @@ def download_preview(url: str, path: str):
         f.write(resp.content)
 
 
+_model = None
+
+
+def _get_model() -> laion_clap.CLAP_Module:
+    global _model
+    if _model is None:
+        _model = laion_clap.CLAP_Module(enable_fusion=False)
+        _model.load_ckpt()
+    return _model
+
+
+def _embed_batch(paths: list[str]) -> np.ndarray:
+    return _get_model().get_audio_embedding_from_filelist(x=paths, use_tensor=False)
+
+
+BATCH_SIZE = 16
+
+
 def embed_titles(titles: list[str], outdir: str) -> tuple[list[str], np.ndarray]:
     cache = load_cache()
-    model = None  # lazy load the model if there are any misses
     resolved_titles = []
     vectors = []
     misses = []
@@ -64,40 +81,30 @@ def embed_titles(titles: list[str], outdir: str) -> tuple[list[str], np.ndarray]
 
         url = search_itunes(title)
         if url is None:
-            print(f"No preview found, skipping: {title}")
             continue
 
         current_path = f"{outdir}/{len(miss_paths)}.m4a"
+        if not Path(current_path).exists():
+            download_preview(url, current_path)
         misses.append(title)
         miss_paths.append(current_path)
-    if miss_paths:
-        model = laion_clap.CLAP_Module(enable_fusion=False)
-        model.load_ckpt()
-        new_vecs = model.get_audio_embedding_from_filelist(
-            x=miss_paths, use_tensor=False
-        )
 
-        for title, vecs in zip(misses, new_vecs):
-            cache[title] = vecs
+    if miss_paths:
+        new_vecs = []
+        for i in range(0, len(miss_paths), BATCH_SIZE):
+            batch = miss_paths[i : i + BATCH_SIZE]
+            new_vecs.extend(_embed_batch(batch))
+
+        for title, vec in zip(misses, new_vecs):
+            cache[title] = vec
             resolved_titles.append(title)
-            vectors.append(vecs)
+            vectors.append(vec)
         save_cache(cache)
 
     return resolved_titles, np.array(vectors)
 
 
 def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
-    """
-    Given a YouTube playlist ID, this function retrieves the titles of the videos in the playlist,
-    searches for their previews on the iTunes API, downloads the previews, and returns a list of the resolved
-    titles and their corresponding audio embeddings.
-    """
+    from timbre.youtube import get_titles
     titles = get_titles(playlist_id)
     return embed_titles(titles, "previews")
-
-
-resolved_titles, embeddings = embed_playlist(PLAYLIST_ID)
-for title, embedding in zip(resolved_titles, embeddings):
-    print(f"Title: {title}, Embedding shape: {embedding.shape}")
-
-print("embedding shape: ", embeddings.shape)

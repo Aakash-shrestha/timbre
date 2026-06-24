@@ -47,7 +47,3 @@ def get_titles(playlist_id: str):
     titles = [item["snippet"]["title"] for item in data["items"]]
     return [t for t in titles if filter_songs_title(t)]
 
-
-titles = get_titles(PLAYLIST_ID)
-for title in titles:
-    print(title)
