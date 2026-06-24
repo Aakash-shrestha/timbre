@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 from sklearn.cluster import KMeans
@@ -6,6 +7,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 from timbre.audio import embed_playlist, embed_titles
 
 PLAYLIST_ID = "PLbAAt7n1yO_tydN0yogQXwvjH-KpkoZha"
+
+
+def read_csv_titles(csv_path: str) -> list[str]:
+    titles = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            titles.append(f"{row['Artist Name(s)']} - {row['Track Name']}")
+    return titles
 
 
 titles, embeddings = embed_playlist(playlist_id=PLAYLIST_ID)

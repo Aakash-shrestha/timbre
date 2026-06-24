@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 
 import laion_clap
@@ -7,6 +8,20 @@ import requests
 from timbre.youtube import get_titles
 
 PLAYLIST_ID = "PLbAAt7n1yO_tydN0yogQXwvjH-KpkoZha"
+
+CACHE_PATH = "embedding_cache.pkl"
+
+
+def load_cache() -> dict:
+    if Path(CACHE_PATH).exists():
+        with open(CACHE_PATH, "rb") as f:
+            return pickle.load(f)
+    return {}
+
+
+def save_cache(cache: dict):
+    with open(CACHE_PATH, "wb") as f:
+        pickle.dump(cache, f)
 
 
 def search_itunes(term: str) -> str | None:
@@ -33,29 +48,42 @@ def download_preview(url: str, path: str):
 
 
 def embed_titles(titles: list[str], outdir: str) -> tuple[list[str], np.ndarray]:
-    model = laion_clap.CLAP_Module(enable_fusion=False)
-    model.load_ckpt()
-
+    cache = load_cache()
+    model = None  # lazy load the model if there are any misses
     resolved_titles = []
-    path = []
+    vectors = []
+    misses = []
+    miss_paths = []
 
     Path(outdir).mkdir(exist_ok=True)
     for title in titles:
-        url = search_itunes(title)
+        if title in cache:
+            resolved_titles.append(title)
+            vectors.append(cache[title])
+            continue
 
+        url = search_itunes(title)
         if url is None:
             print(f"No preview found, skipping: {title}")
             continue
 
-        current_path = f"{outdir}/{len(path)}.m4a"
-        if not Path(current_path).exists():
-            download_preview(url, current_path)
-        resolved_titles.append(title)
-        path.append(current_path)
+        current_path = f"{outdir}/{len(miss_paths)}.m4a"
+        misses.append(title)
+        miss_paths.append(current_path)
+    if miss_paths:
+        model = laion_clap.CLAP_Module(enable_fusion=False)
+        model.load_ckpt()
+        new_vecs = model.get_audio_embedding_from_filelist(
+            x=miss_paths, use_tensor=False
+        )
 
-    embedding = model.get_audio_embedding_from_filelist(x=path, use_tensor=False)
+        for title, vecs in zip(misses, new_vecs):
+            cache[title] = vecs
+            resolved_titles.append(title)
+            vectors.append(vecs)
+        save_cache(cache)
 
-    return resolved_titles, embedding
+    return resolved_titles, np.array(vectors)
 
 
 def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
