@@ -22,6 +22,12 @@ def save_cache(cache: dict):
         pickle.dump(cache, f)
 
 
+def embed_text(phrases: list[str]) -> np.ndarray:
+    model = laion_clap.CLAP_Module(enable_fusion=False)
+    model.load_ckpt()
+    return model.get_text_embedding(phrases, use_tensor=False)
+
+
 def search_itunes(term: str) -> str | None:
     """
     Search for the given term on the iTunes API and return the preview URL of the first result.
@@ -106,5 +112,6 @@ def embed_titles(titles: list[str], outdir: str) -> tuple[list[str], np.ndarray]
 
 def embed_playlist(playlist_id: str) -> tuple[list[str], np.ndarray]:
     from timbre.youtube import get_titles
+
     titles = get_titles(playlist_id)
     return embed_titles(titles, "previews")

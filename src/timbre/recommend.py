@@ -1,11 +1,11 @@
 import csv
 from pathlib import Path
+from typing import Counter
 
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from sklearn.metrics.pairwise import cosine_similarity
 
-from timbre.audio import embed_titles
+from timbre.audio import embed_text, embed_titles
 
 
 def read_csv_titles(csv_path: str) -> list[str]:
@@ -30,31 +30,33 @@ for cluster_id in sorted(set(labels)):
         if label == cluster_id:
             print(f"  {title}")
 
-candidates = [
-    "Daniel Caesar - Get You",
-    "Bruno Major - Easily",
-    "Clairo - Bags",
-    "Metallica - Master of Puppets",
-    "Daft Punk - Harder Better",
-    "Phoebe Bridgers - Motion Sickness",
-]
-
-liked_set = set(playlist_titles)
-overlapping = [c for c in candidates if c in liked_set]
-if overlapping:
-    print(f"\nWarning: candidates overlap with liked songs: {overlapping}")
-
-outdir = "candidates"
-Path(outdir).mkdir(exist_ok=True)
-candidate_titles, candidate_vecs = embed_titles(candidates, outdir)
-print(f"candidates resolved: {candidate_titles}")
-
 centroids = kmeans.cluster_centers_
 
-sim_vec = cosine_similarity(candidate_vecs, centroids)
+phrases = [
+    "sparse melancholic folk with fingerpicked acoustic guitar",
+    "hazy washed-out shoegaze with reverb-drenched guitars",
+    "funky groove-driven bedroom pop with prominent bassline",
+    "nostalgic synth-heavy japanese city pop",
+    "bright jangly upbeat indie rock",
+    "lush cinematic dream pop with airy female vocals",
+    "raw lo-fi stripped-down singer-songwriter recording",
+    "warm vintage jazz with brushed drums and upright bass",
+]
 
-print("\n--- Candidate scores ---")
-for i, title in enumerate(candidate_titles):
-    best_cluster = sim_vec[i].argmax()
-    best_score = sim_vec[i].max()
-    print(f"{best_score:.3f}  [cluster {best_cluster}]  {title}")
+phrase_vec = embed_text(phrases)
+
+# similarity between each songs and each phrase_vec
+song_phrase_sims = cosine_similarity(
+    embeddings, phrase_vec
+)  # (num_songs_vec, 10(phrase_vecs))
+
+votes = song_phrase_sims.argmax(
+    axis=1
+)  # find the index of the most similar phrase for each song
+
+for cluster_id in sorted(set(labels)):
+    cluster_votes = votes[labels == cluster_id]
+    tally = Counter(cluster_votes)
+    print(f"\n[cluster {cluster_id}]")
+    for phrase_idx, count in tally.most_common(3):
+        print(f"  {count:2d} votes → {phrases[phrase_idx]}")
