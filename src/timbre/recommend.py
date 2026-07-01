@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from timbre.audio import embed_text, embed_titles
 from timbre.features import extract_features_for
-from timbre.io import read_csv_titles
+from timbre.ingest import read_csv_titles
 
 playlist_titles = read_csv_titles("data/spotify_liked_songs.csv")
 titles, embeddings = embed_titles(playlist_titles, "data/liked_playlist")
@@ -87,3 +87,6 @@ for i, title in enumerate(candidate_titles):
     best_score = sim_vec[i].max()
     label = cluster_labels[best_cluster]
     print(f"{best_score:.3f}  [{label}]  {title}")
+
+
+# umap
