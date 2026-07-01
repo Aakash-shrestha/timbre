@@ -1,6 +1,6 @@
 import csv
+from collections import Counter
 from pathlib import Path
-from typing import Counter
 
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
@@ -54,9 +54,29 @@ votes = song_phrase_sims.argmax(
     axis=1
 )  # find the index of the most similar phrase for each song
 
+cluster_labels = {}
 for cluster_id in sorted(set(labels)):
     cluster_votes = votes[labels == cluster_id]
+    winning_idx = Counter(cluster_votes).most_common(1)[0][0]
+    cluster_labels[cluster_id] = phrases[winning_idx]
     tally = Counter(cluster_votes)
     print(f"\n[cluster {cluster_id}]")
     for phrase_idx, count in tally.most_common(3):
         print(f"  {count:2d} votes → {phrases[phrase_idx]}")
+
+candidates = [
+    "Daniel Caesar - Get You",
+    "Bruno Major - Easily",
+    "Clairo - Bags",
+    "Metallica - Master of Puppets",
+    "Daft Punk - Harder Better",
+    "Phoebe Bridgers - Motion Sickness",
+]
+candidate_titles, candidate_vecs = embed_titles(candidates, "candidates")
+sim_vec = cosine_similarity(candidate_vecs, centroids)
+
+for i, title in enumerate(candidates):
+    best_cluster = sim_vec[i].argmax()
+    best_score = sim_vec[i].max()
+    label = cluster_labels[best_cluster]
+    print(f"{best_score:.3f}  [{label}]  {title}")
