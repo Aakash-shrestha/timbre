@@ -9,6 +9,30 @@ from timbre.audio import embed_text, embed_titles
 from timbre.features import extract_features_for
 from timbre.ingest import read_csv_titles
 
+DEFAULT_PHRASES = [
+    "sparse melancholic folk with fingerpicked acoustic guitar",
+    "hazy washed-out shoegaze with reverb-drenched guitars",
+    "funky groove-driven bedroom pop with prominent bassline",
+    "nostalgic synth-heavy japanese city pop",
+    "bright jangly upbeat indie rock",
+    "lush cinematic dream pop with airy female vocals",
+    "raw lo-fi stripped-down singer-songwriter recording",
+    "warm vintage jazz with brushed drums and upright bass",
+]
+
+
+def label_clusters(embeddings, labels, phrases=None) -> dict:
+    if phrases is None:
+        phrases = DEFAULT_PHRASES
+    phrase_vec = embed_text(phrases)
+    votes = cosine_similarity(embeddings, phrase_vec).argmax(axis=1)
+    cluster_labels = {}
+    for cluster_id in sorted(set(labels)):
+        winning_idx = Counter(votes[labels == cluster_id]).most_common(1)[0][0]
+        cluster_labels[cluster_id] = phrases[winning_idx]
+    return cluster_labels
+
+
 playlist_titles = read_csv_titles("data/spotify_liked_songs.csv")
 titles, embeddings = embed_titles(playlist_titles, "data/liked_playlist")
 
@@ -39,37 +63,7 @@ for cluster_id in sorted(set(labels)):
 
 centroids = kmeans.cluster_centers_
 
-phrases = [
-    "sparse melancholic folk with fingerpicked acoustic guitar",
-    "hazy washed-out shoegaze with reverb-drenched guitars",
-    "funky groove-driven bedroom pop with prominent bassline",
-    "nostalgic synth-heavy japanese city pop",
-    "bright jangly upbeat indie rock",
-    "lush cinematic dream pop with airy female vocals",
-    "raw lo-fi stripped-down singer-songwriter recording",
-    "warm vintage jazz with brushed drums and upright bass",
-]
-
-phrase_vec = embed_text(phrases)
-
-# similarity between each songs and each phrase_vec
-song_phrase_sims = cosine_similarity(
-    embeddings, phrase_vec
-)  # (num_songs_vec, 10(phrase_vecs))
-
-votes = song_phrase_sims.argmax(
-    axis=1
-)  # find the index of the most similar phrase for each song
-
-cluster_labels = {}
-for cluster_id in sorted(set(labels)):
-    cluster_votes = votes[labels == cluster_id]
-    winning_idx = Counter(cluster_votes).most_common(1)[0][0]
-    cluster_labels[cluster_id] = phrases[winning_idx]
-    tally = Counter(cluster_votes)
-    for phrase_idx, count in tally.most_common(3):
-        print(f"  {count:2d} votes → {phrases[phrase_idx]}")
-
+cluster_labels = label_clusters(embeddings, labels)
 
 candidates = [
     "Daniel Caesar - Get You",
@@ -87,6 +81,3 @@ for i, title in enumerate(candidate_titles):
     best_score = sim_vec[i].max()
     label = cluster_labels[best_cluster]
     print(f"{best_score:.3f}  [{label}]  {title}")
-
-
-# umap
