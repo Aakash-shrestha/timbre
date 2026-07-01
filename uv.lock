@@ -1835,6 +1835,8 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "laion-clap" },
+    { name = "librosa" },
+    { name = "numpy" },
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "scikit-learn" },
@@ -1845,6 +1847,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "laion-clap", specifier = ">=1.1.7" },
+    { name = "librosa", specifier = ">=0.11.0" },
+    { name = "numpy", specifier = ">=1.26.4" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
