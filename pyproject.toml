@@ -1,7 +1,7 @@
 [project]
 name = "timbre"
 version = "0.1.0"
-description = "Add your description here"
+description = "helps you find, why you love the music you love!"
 readme = "README.md"
 authors = [
     { name = "Aakash-shrestha", email = "akash.stha444@icloud.com" }

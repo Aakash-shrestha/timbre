@@ -6,7 +6,7 @@ import librosa
 import numpy as np
 
 from timbre.audio import embed_titles
-from timbre.io import read_csv_titles
+from timbre.ingest import read_csv_titles
 
 FEATURES_CACHE = "features_cache.pkl"
 

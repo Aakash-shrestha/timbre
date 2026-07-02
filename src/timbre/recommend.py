@@ -5,36 +5,13 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
 
-from timbre.audio import embed_text, embed_titles
+from timbre.audio import embed_titles
 from timbre.features import extract_features_for
 from timbre.ingest import read_csv_titles
-
-DEFAULT_PHRASES = [
-    "sparse melancholic folk with fingerpicked acoustic guitar",
-    "hazy washed-out shoegaze with reverb-drenched guitars",
-    "funky groove-driven bedroom pop with prominent bassline",
-    "nostalgic synth-heavy japanese city pop",
-    "bright jangly upbeat indie rock",
-    "lush cinematic dream pop with airy female vocals",
-    "raw lo-fi stripped-down singer-songwriter recording",
-    "warm vintage jazz with brushed drums and upright bass",
-]
-
-
-def label_clusters(embeddings, labels, phrases=None) -> dict:
-    if phrases is None:
-        phrases = DEFAULT_PHRASES
-    phrase_vec = embed_text(phrases)
-    votes = cosine_similarity(embeddings, phrase_vec).argmax(axis=1)
-    cluster_labels = {}
-    for cluster_id in sorted(set(labels)):
-        winning_idx = Counter(votes[labels == cluster_id]).most_common(1)[0][0]
-        cluster_labels[cluster_id] = phrases[winning_idx]
-    return cluster_labels
-
+from timbre.labeling import label_clusters
 
 playlist_titles = read_csv_titles("data/spotify_liked_songs.csv")
-titles, embeddings = embed_titles(playlist_titles, "data/liked_playlist")
+titles, embeddings, urls = embed_titles(playlist_titles, "data/liked_playlist")
 
 kmeans = KMeans(n_clusters=3, random_state=42)
 labels = kmeans.fit_predict(embeddings)
@@ -73,7 +50,8 @@ candidates = [
     "Daft Punk - Harder Better",
     "Phoebe Bridgers - Motion Sickness",
 ]
-candidate_titles, candidate_vecs = embed_titles(candidates, "candidates")
+
+candidate_titles, candidate_vecs, _ = embed_titles(candidates, "candidates")
 sim_vec = cosine_similarity(candidate_vecs, centroids)
 
 for i, title in enumerate(candidate_titles):
